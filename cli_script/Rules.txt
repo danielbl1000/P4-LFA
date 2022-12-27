@@ -1,0 +1,464 @@
+############################## TOPOLOGIA ################################
+
+
+sudo python 1sw_demo_Pro.py  --behavioral-exe /usr/local/bin/simple_switch --json SIMPLE_ROUTER_FRRv1.json
+
+
+###################### SCRIPTs POPULAR TABELAS E SIMULACAO DE FALHAS #####################
+
+FRR_LADO_A.sh
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9090 < S1v1-COMMAND-LADO-A.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9091 < S2v1-COMMAND-LADO-A.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9092 < S3v1-COMMAND-LADO-A.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9093 < S4v1-COMMAND-LADO-A.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9094 < S5v1-COMMAND-LADO-A.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9095 < S6v1-COMMAND-LADO-A.txt
+
+
+FRR_LADO_B.sh
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9090 < S1v1-COMMAND-LADO-B.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9091 < S2v1-COMMAND-LADO-B.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9092 < S3v1-COMMAND-LADO-B.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9093 < S4v1-COMMAND-LADO-B.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9094 < S5v1-COMMAND-LADO-B.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9095 < S6v1-COMMAND-LADO-B.txt
+
+
+DOWN_S2_S3.sh
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9091 < S2_S3_DOWN-COMMAND.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9092 < S3_S2_DOWN-COMMAND.txt
+
+
+DOWN_S3_S4.sh
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9092 < S3_S4_DOWN-COMMAND.txt
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9093 < S4_S3_DOWN-COMMAND.txt
+
+
+DOWN_S4_H3.sh
+sudo python /usr/local/lib/python2.7/dist-packages/runtime_CLI.py --thrift-port 9093 < S4_H3_DOWN-COMMAND.txt
+
+
+######################################### LADO A PRINCIPAL###############################
+
+S1v1-COMMAND-LADO-A.txt
+
+
+!ROTEAMENTO LOCAL OU DESTINO OUTRO SWITCH
+table_clear ipv4_lpm_local
+table_add ipv4_lpm_local set_nhop 10.0.1.10/32 => 10.0.1.10 4
+table_add ipv4_lpm_local set_nhop 10.0.0.10/32 => 10.0.0.10 3
+table_add ipv4_lpm_local set_nhop 10.0.2.10/32 => 10.0.0.10 1
+!ENCAMINHAMENTO DE PACOTES
+table_clear forward
+table_add forward set_dmac 10.0.0.10 => 00:04:00:00:00:00
+table_add forward set_dmac 10.0.1.10 => 00:04:00:00:00:01
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 3 => 00:aa:bb:00:00:00
+table_add send_frame rewrite_mac 4 => 00:aa:bb:00:00:01
+table_add send_frame rewrite_mac 1 => 00:aa:bb:00:00:02
+table_add send_frame rewrite_mac 2 => 00:aa:bb:00:00:03
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 3 => 1
+table_add egress_port_link_state set_link_state 4 => 1
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 3 => 1 0
+table_add port_type set_port_type 4 => 1 0
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+
+S2v1-COMMAND-LADO-A.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+
+
+S3v1-COMMAND-LADO-A.txt
+
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+S4v1-COMMAND-LADO-A.txt
+
+!ROTEAMENTO LOCAL OU DESTINO OUTRO SWITCH
+table_clear ipv4_lpm_local
+table_add ipv4_lpm_local set_nhop 10.0.2.10/32 => 10.0.2.10 3
+table_add ipv4_lpm_local set_nhop 10.0.1.10/32 => 10.0.1.10 1
+table_add ipv4_lpm_local set_nhop 10.0.0.10/32 => 10.0.0.10 1
+!ENCAMINHAMENTO DE PACOTES
+table_clear forward
+table_add forward set_dmac 10.0.2.10 => 00:04:00:00:00:02
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 3 => 00:aa:bb:00:00:02
+table_add send_frame rewrite_mac 1 => 00:aa:bb:03:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:03:00:02
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 3 => 1
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+table_add port_type set_port_type 3 => 1 0
+!
+S5v1-COMMAND-LADO-A.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+S6v1-COMMAND-LADO-A.txt
+
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+################################# LADO B PRINCIPAL ###########################################
+
+S1v1-COMMAND-LADO-B.txt
+
+
+!ROTEAMENTO LOCAL OU DESTINO OUTRO SWITCH
+table_clear ipv4_lpm_local
+table_add ipv4_lpm_local set_nhop 10.0.1.10/32 => 10.0.1.10 4
+table_add ipv4_lpm_local set_nhop 10.0.0.10/32 => 10.0.0.10 3
+table_add ipv4_lpm_local set_nhop 10.0.2.10/32 => 10.0.0.10 2
+!ENCAMINHAMENTO DE PACOTES
+table_clear forward
+table_add forward set_dmac 10.0.0.10 => 00:04:00:00:00:00
+table_add forward set_dmac 10.0.1.10 => 00:04:00:00:00:01
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 3 => 00:aa:bb:00:00:00
+table_add send_frame rewrite_mac 4 => 00:aa:bb:00:00:01
+table_add send_frame rewrite_mac 1 => 00:aa:bb:00:00:02
+table_add send_frame rewrite_mac 2 => 00:aa:bb:00:00:03
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 3 => 1
+table_add egress_port_link_state set_link_state 4 => 1
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 3 => 1 0
+table_add port_type set_port_type 4 => 1 0
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+S2v1-COMMAND-LADO-B.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+S3v1-COMMAND-LADO-B.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+S4v1-COMMAND-LADO-B.txt
+
+!ROTEAMENTO LOCAL OU DESTINO OUTRO SWITCH
+table_clear ipv4_lpm_local
+table_add ipv4_lpm_local set_nhop 10.0.2.10/32 => 10.0.2.10 3
+table_add ipv4_lpm_local set_nhop 10.0.1.10/32 => 10.0.1.10 2
+table_add ipv4_lpm_local set_nhop 10.0.0.10/32 => 10.0.0.10 2
+!ENCAMINHAMENTO DE PACOTES
+table_clear forward
+table_add forward set_dmac 10.0.2.10 => 00:04:00:00:00:02
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 3 => 00:aa:bb:00:00:02
+table_add send_frame rewrite_mac 1 => 00:aa:bb:03:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:03:00:02
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 3 => 1
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+table_add port_type set_port_type 3 => 1 0
+!
+S5v1-COMMAND-LADO-B.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+!
+
+S6v1-COMMAND-LADO-B.txt
+
+
+!DETERMINA INTERFACE UP (1) OU DOWN (0)
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 2 => 1
+!
+!ROTEAMENTO DE TRANSITO ENTRE SWITCHES
+table_clear ipv4_lpm_transit
+table_add ipv4_lpm_transit set_nhop 1 10.0.2.10/32 => 10.0.2.10 2
+table_add ipv4_lpm_transit set_nhop 2 10.0.2.10/32 => 10.0.2.10 1
+!
+table_add ipv4_lpm_transit set_nhop 2 10.0.0.10/32 => 10.0.0.10 1
+table_add ipv4_lpm_transit set_nhop 2 10.0.1.10/32 => 10.0.1.10 1
+!
+table_add ipv4_lpm_transit set_nhop 1 10.0.0.10/32 => 10.0.0.10 2
+table_add ipv4_lpm_transit set_nhop 1 10.0.1.10/32 => 10.0.1.10 2
+!
+!DESTINO MAC
+table_clear send_frame
+table_add send_frame rewrite_mac 1 => 00:aa:bb:02:00:01
+table_add send_frame rewrite_mac 2 => 00:aa:bb:02:00:02
+!
+!DETERMINA O TIPO DE INTERFACE - LOCAL OU UPLINK
+table_clear port_type
+table_add port_type set_port_type 1 => 0 1
+table_add port_type set_port_type 2 => 0 1
+
+
+############################### SIMULACAO DE FALHAS ########################################
+
+S2_S3_DOWN-COMMAND.txt
+!S2
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 2 => 0
+table_add egress_port_link_state set_link_state 1 => 1
+!
+
+S3_S2_DOWN-COMMAND.txt
+
+!S3
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 1 => 0
+!
+
+S3_S4_DOWN-COMMAND.txt
+
+!S3
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 2 => 0
+table_add egress_port_link_state set_link_state 1 => 1
+!
+
+S4_H3_DOWN-COMMAND.txt
+
+!S4
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 1 => 1
+table_add egress_port_link_state set_link_state 3 => 0
+!
+
+S4_S3_DOWN-COMMAND.txt
+
+!S4
+table_clear egress_port_link_state
+table_add egress_port_link_state set_link_state 2 => 1
+table_add egress_port_link_state set_link_state 1 => 0
+table_add egress_port_link_state set_link_state 3 => 1
+!
+
+
